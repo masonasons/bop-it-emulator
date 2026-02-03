@@ -1,7 +1,7 @@
 #pragma document "changelog.txt"
 #pragma document "readme.txt"
 #pragma embed "hasbro"
-#include "../include/touch.nvgt"
+#include "touch.nvgt"
 #include "menu.nvgt"
 #include "includes/mtouch.nvgt"
 #include "includes/menu.nvgt"
@@ -9,9 +9,9 @@
 #include"includes/orig.nvgt"
 #include"includes/extreme.nvgt"
 #include"includes/extreme2.nvgt"
-#include"../include/sd.nvgt"
-#include"../include/number_speaker.nvgt"
-#include"../include/sound_manager.nvgt"
+#include"includes/sd.nvgt"
+#include"number_speaker.nvgt"
+#include"includes/sound_manager.nvgt"
 int switchtime=200;
 bool play_mechanics=true;
 bool play_revision=false;
