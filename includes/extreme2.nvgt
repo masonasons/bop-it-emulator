@@ -1,0 +1,1069 @@
+// Bop It Extreme 2 Emulator
+
+number_speaker extreme2_ns;  // For speaking scores
+
+// Base sound length (used for pass melodies, etc.)
+const int EXTREME2_SOUND_LENGTH = 100;
+
+// Timing system: per-beat speed tables (16th note length in ms)
+// Each beat type has different timing at each speed level
+// Normal mode: indices 0-4 (5 speeds), Turbo mode: indices 0-11 (12 speeds)
+// Base values -10ms, then turbo extends with -10ms per level
+int[] extreme2_beat1_speeds = {116, 112, 109, 110, 112, 90, 80, 70, 60, 50, 40, 30};
+int[] extreme2_beat2_speeds = {114, 109, 109, 109, 107, 90, 80, 70, 60, 50, 40, 30};
+int[] extreme2_beat3_speeds = {120, 111, 111, 111, 111, 90, 80, 70, 60, 50, 40, 30};
+int[] extreme2_beat4_speeds = {116, 111, 111, 111, 111, 90, 80, 70, 60, 50, 40, 30};
+int extreme2_speed_level = 0;  // 0-4 for normal, 0-11 for turbo
+
+// Helper to get current 16th note time based on beat type and speed level
+int extreme2_note_time()
+{
+	if (extreme2_beat == 1) return extreme2_beat1_speeds[extreme2_speed_level];
+	else if (extreme2_beat == 2) return extreme2_beat2_speeds[extreme2_speed_level];
+	else if (extreme2_beat == 3) return extreme2_beat3_speeds[extreme2_speed_level];
+	else return extreme2_beat4_speeds[extreme2_speed_level];
+}
+
+int extreme2_beat = 1;  // Current beat (1-4)
+int extreme2_command_count = 0;  // Commands in current beat (0-15)
+int extreme2_hs = 0;
+int extreme2_green_score = 0;
+int extreme2_yellow_score = 0;
+bool extreme2_beat_just_switched = false;
+bool extreme2_pending_beat_switch = false;  // Wait for success beat to finish before switching
+bool extreme2_do_switch_after_halfbeat = false;  // Delay switch until after beat 4.5
+int extreme2_last_command = 0;  // The command that was just successfully completed
+
+// mode: 1=vox pass it, 2=vox one on one, 3=vox solo, 4=beat pass it, 5=beat one on one, 6=beat solo
+
+// Preloaded sound pool for extreme2
+dictionary extreme2_sounds;
+
+void extreme2_preload_sounds()
+{
+	string[] sound_names = {
+		// Command sounds
+		"1", "1_2", "1_3", "2", "2_2", "2_3", "3", "3_2", "3_3",
+		"4", "4_2", "4_3", "5", "5_2", "5_3",
+		// Comments
+		"bad1", "bad2", "bad3", "bad4", "bad5", "bad6", "bad7",
+		"good1", "good2", "good3",
+		// Mode sounds
+		"bb", "vb", "passit", "oneonone", "solo",
+		// Game sounds
+		"ouch", "out", "hs", "score", "green", "yellow", "wins",
+		// Beat 1 sounds
+		"beat1hat", "beat1hat2", "beat1kick", "beat1kick2", "beat1kick3",
+		"beat1kick4", "beat1kick5", "beat1kick6", "beat1perc", "beat1perc2",
+		"beat1perc3", "beat1snare", "beat1snare2",
+		// Beat 2 sounds
+		"beat2kick", "beat2kick2", "beat2kick3", "beat2kick4",
+		"beat2snare", "beat2snare2", "beat2snare3",
+		// Beat 3 sounds
+		"beat3bell", "beat3bongo", "beat3bongo2", "beat3bongobell",
+		"beat3hat", "beat3hatbell", "beat3hatc", "beat3kick",
+		"beat3perc", "beat3percbell", "beat3percbell2", "beat3percbell3",
+		// Beat 4 sounds
+		"beat4clap", "beat4hat", "beat4kick", "beat4kick2", "beat4kick3",
+		"beat4kickhat", "beat4kicksnare", "beat4snare", "beat4snare2",
+		"beat4snare3", "beat4snare4",
+		// Pass melody sounds
+		"pass1_1", "pass1_2", "pass1_3", "pass1_4", "pass1_5",
+		"pass1_6", "pass1_7", "pass1_8", "pass1_9", "pass1_10",
+		"pass2_1", "pass2_2", "pass2_3", "pass2_4",
+		// Number sounds (for score)
+		"one", "two", "three", "four", "five", "six", "seven",
+		"eight", "nine", "ten", "eleven", "twelve", "thir", "fif",
+		"teen", "twen", "ty", "hundred"
+	};
+
+	for (uint i = 0; i < sound_names.length(); i++)
+	{
+		sound@ s = sound();
+		s.load("extreme2/" + sound_names[i] + ".ogg");
+		extreme2_sounds.set(sound_names[i], @s);
+	}
+}
+
+void extreme2_play(string name, bool wait_for_sound = false)
+{
+	sound@ s;
+	if (extreme2_sounds.get(name, @s))
+	{
+		s.seek(0);
+		s.play();
+		if (wait_for_sound)
+			while (s.playing) wait(5);
+	}
+}
+
+void init_extreme2()
+{
+revision=70;
+add_command(KEY_DOWN);   // 1 = bop it
+add_command(KEY_LEFT);   // 2 = pull it
+add_command(KEY_RIGHT);  // 3 = twist it
+add_command(KEY_RETURN); // 4 = spin it
+add_command(KEY_UP);     // 5 = flick it
+soundpath="extreme2";
+// Configure number speaker for score announcements
+extreme2_ns.prepend = "extreme2/";
+extreme2_ns.append = ".ogg";
+@extreme2_ns.pack = @pf;
+test_mode_item("1",700);
+test_mode_item("2",700);
+test_mode_item("3",700);
+test_mode_item("4",700);
+test_mode_item("5",700);
+test_mode_item("vb",900);
+test_mode_item("bb",900);
+test_mode_item("solo",900);
+test_mode_item("passit",700);
+test_mode_item("oneonone",1000);
+}
+
+void extreme2()
+{
+init_extreme2();
+extreme2_preload_sounds();
+update_title("Bop It Extreme 2 Emulator");
+if (screen_reader_is_running(1)) install_keyhook();
+extreme2_play("1");
+extreme2_waiting();
+}
+
+void extreme2_waiting()
+{
+mechpath="extreme";
+extreme2_hs=set.read_number("extreme2_score",0);
+extreme2_beat=1;
+extreme2_command_count=0;
+while(true)
+{
+shared_wait();
+if (key_pressed(KEY_TAB) and switchtimer.elapsed>=switchtime)
+{
+switchtimer.restart();
+reset();
+if (batteries_inserted<3)
+batteries_inserted=0;
+original();
+}
+// Pull it (LEFT) cycles through modes
+if (key_pressed(KEY_LEFT))
+{
+play("2_"+random(1,2)+".ogg",false,true);
+if (batteries_inserted==3)
+{
+if (mode==0)
+mode=1;
+else if (mode>=1 and mode<=3)
+{
+mode+=1;
+if (mode>3)
+mode=1;
+}
+else if (mode>=4 and mode<=6)
+{
+mode+=1;
+if (mode>6)
+mode=4;
+}
+extreme2_announce_mode();
+wait(700*timercalc);
+}
+}
+// Flick it toggles between vox bop and beat bop
+if (key_pressed(KEY_UP))
+{
+play("5_"+random(1,2)+".ogg",false,true);
+if (batteries_inserted==3)
+{
+if (mode==0)
+{
+mode=1;
+extreme2_play("vb");
+}
+else if (mode>=1 and mode<=3)
+{
+mode=mode+3;
+extreme2_play("bb");
+}
+else
+{
+mode=mode-3;
+extreme2_play("vb");
+}
+wait(700*timercalc);
+}
+}
+// Twist it (RIGHT) shows high score in solo modes
+if (key_pressed(KEY_RIGHT))
+{
+play("3_"+random(1,2)+".ogg",false,true);
+if ((mode==3 or mode==6) and batteries_inserted==3)
+{
+score=extreme2_hs;
+extreme2_play("hs");
+wait(1000*timercalc);
+extreme2_playscore();
+score=0;
+}
+}
+// Bop it starts game
+if (key_pressed(KEY_DOWN))
+{
+play("1_"+random(1,2)+".ogg",false,true);
+if (mode>0)
+{
+if (mode==2 or mode==5)
+extreme2_game_one_on_one();
+else
+extreme2_game();
+}
+}
+// Spin it
+if (key_pressed(KEY_RETURN))
+play("4_"+random(1,2)+".ogg",false,true);
+}
+}
+
+void extreme2_announce_mode()
+{
+if (mode>=1 and mode<=3)
+{
+extreme2_play("vb");
+wait(650*timercalc);
+}
+else
+{
+extreme2_play("bb");
+wait(550*timercalc);
+}
+int submode=(mode-1)%3+1;
+if (submode==1)
+extreme2_play("passit");
+else if (submode==2)
+extreme2_play("oneonone");
+else
+extreme2_play("solo");
+}
+
+void extreme2_game()
+{
+bool halfcheck=false;
+// Reset speed to level 0 (speed 1)
+extreme2_speed_level = 0;
+// beattime = 2 * note_time (varies per beat type)
+beattime = 2 * extreme2_note_time();
+failtime=1100;
+failtimer.restart();
+beattimer.restart();
+beattimer.force(200);
+score=-1;
+commandmeasure=0;
+succeeded=true;
+beats=0;
+measure=0;
+extreme2_beat=1;
+extreme2_command_count=0;
+extreme2_beat_just_switched=false;
+extreme2_pending_beat_switch=false;
+extreme2_do_switch_after_halfbeat=false;
+extreme2_last_command=0;
+autopilottimer.restart();
+passmode=false;  // Don't start in pass mode - wait for command 6
+
+while(batteries_inserted==3)
+{
+battery_keys();
+if (batteries_inserted<3)
+return;
+extreme2_engineloop();
+if (failtimer.elapsed>=failtime*timercalc and succeeded==false)
+{
+extreme2_play("ouch");
+update_title();
+wait(1100);  // Wait for ouch sound to finish
+if (mode==3 or mode==6)
+{
+// Lose sequence: ow (already played) -> beat sequence -> good/bad -> score
+extreme2_play_lose_beat();
+extreme2_playcomment();  // Always play good or bad comment
+if (score>0)
+{
+if (score>extreme2_hs)
+{
+extreme2_hs=score;
+set.write_number("extreme2_score",extreme2_hs);
+extreme2_play("hs");
+}
+else
+extreme2_play("score");
+wait(600*timercalc);
+extreme2_playscore();
+}
+}
+else
+{
+extreme2_play("out");
+score=0;
+}
+reset_all_forced_keys();
+extreme2_waiting();
+}
+if (beattimer.elapsed>=gamebeattime/2 and halfcheck==false)
+{
+halfcheck=true;
+extreme2_halfbeat();
+}
+if (beattimer.elapsed>=gamebeattime)
+{
+halfcheck=false;
+beattimer.restart();
+beats+=1;
+if (beats>4)
+{
+beats=1;
+measure+=1;
+}
+extreme2_checkstuff();
+}
+if (key_pressed(KEY_ESCAPE) or key_pressed(KEY_AC_BACK))
+{
+exit();
+}
+}
+}
+
+void extreme2_engineloop()
+{
+wait(5);
+touch.monitor();
+batterydrain();
+gamespeed_loop();
+if (autopilot==true)
+{
+if (autopilottimer.elapsed>=autopilottime*timercalc)
+{
+autopilottimer.restart();
+for (uint i=0; i<commands.length(); i++)
+{
+if (command==(i+1))
+simulate_key_down(commands[i].key);
+}
+}
+}
+for (uint i=0; i<commands.length(); i++)
+{
+if (key_pressed(commands[i].key) and succeeded==false)
+{
+keydown++;
+if (command==(i+1))
+{
+play((i+1)+"_"+random(1,2)+".ogg",false,true);
+extreme2_play((i+1)+"_2");
+extreme2_last_command=command;  // Save which command was completed
+succeeded=true;
+extreme2_command_count++;
+if (extreme2_command_count>=(turbo ? 8 : 16))
+{
+extreme2_pending_beat_switch=true;
+}
+beattimer.restart();
+measure=commandmeasure+1;
+beats=1;
+keydown=0;
+break;
+}
+else
+{
+play((i+1)+"_"+random(1,2)+".ogg",false,true);
+succeeded=false;
+}
+}
+}
+if (succeeded==false and keydown==1)
+{
+keydown=0;
+failtimer.force(failtime);
+update_title();
+}
+}
+
+void extreme2_halfbeat()
+{
+// Handle pass it mode - no beats during pass it waiting period
+if (passmode==true)
+return;
+
+// Start beat half-beats (measures 0-1)
+if (measure==0 or measure==1)
+{
+extreme2_halfbeat_start();
+return;
+}
+
+// Gameplay half-beats (measure > 1)
+if (measure>1 and passmode==false)
+{
+extreme2_halfbeat_gameplay();
+}
+}
+
+void extreme2_halfbeat_start()
+{
+if (extreme2_beat==1)
+{
+// measure 1: perc at beat 4 (after snare half note), perc2 at 4.5
+if (measure==1 and beats==4) extreme2_play("beat1perc2");
+}
+else if (extreme2_beat==3)
+{
+if (measure==0)
+{
+if (beats==1) extreme2_play("beat3hatc");
+else if (beats==2) extreme2_play("beat3bell");
+else if (beats==3) extreme2_play("beat3hatc");
+else if (beats==4) extreme2_play("beat3perc");
+}
+else if (measure==1)
+{
+if (beats==1) extreme2_play("beat3hatc");
+else if (beats==2) extreme2_play("beat3hat");
+else if (beats==4) extreme2_play("beat3hatc");
+}
+}
+else if (extreme2_beat==4)
+{
+// All quarter notes for beat4 start sequence
+if (measure==0)
+{
+// Line 1-2: kicksnare(1.5), snare3(2.5), snare3(3.5), kicksnare(4.5)
+if (beats==1) extreme2_play("beat4kicksnare");
+else if (beats==2) extreme2_play("beat4snare3");
+else if (beats==3) extreme2_play("beat4snare3");
+else if (beats==4) extreme2_play("beat4kicksnare");
+}
+else if (measure==1)
+{
+// Line 3-4: snare3(1.5), kicksnare(2.5), kicksnare(3.5), nothing(4.5)
+if (beats==1) extreme2_play("beat4snare3");
+else if (beats==2) extreme2_play("beat4kicksnare");
+else if (beats==3) extreme2_play("beat4kicksnare");
+// beats==4 is nothing
+}
+}
+}
+
+void extreme2_halfbeat_gameplay()
+{
+// Twist it at beat 2.5 - ONLY after twist it success (command 3 = KEY_RIGHT)
+// Use extreme2_last_command to check what was COMPLETED, not current command
+if (beats==2 and succeeded==true and extreme2_last_command==3 and (extreme2_beat==1 or extreme2_beat==2))
+{
+if (extreme2_beat==1) extreme2_play("beat1hat");
+else if (extreme2_beat==2) extreme2_play("beat2kick");
+return;
+}
+
+// Only play at beats 3.5 and 4.5
+if (beats!=3 and beats!=4) return;
+
+// WAITING (succeeded==false): "Beats after command" - all quarter notes
+// SUCCESS (succeeded==true): "After successful command" - snare2 is HALF note
+if (extreme2_beat==1)
+{
+if (beats==3)
+{
+// At 3.5: waiting=kick6, success=NOTHING (snare2 half note continues)
+if (succeeded==false) extreme2_play("beat1kick6");
+// else nothing - snare2 is a half note, still playing
+}
+else if (beats==4)
+{
+// At 4.5: perc2 for both
+extreme2_play("beat1perc2");
+}
+}
+else if (extreme2_beat==2)
+{
+// All half notes - no halfbeat sounds
+}
+else if (extreme2_beat==3)
+{
+// Beat 3: all quarter notes
+if (beats==3)
+{
+// At 3.5: hatc for both
+extreme2_play("beat3hatc");
+}
+else if (beats==4)
+{
+// At 4.5: kick for both (waiting and success)
+extreme2_play("beat3kick");
+}
+}
+else if (extreme2_beat==4)
+{
+// Beat 4: snare is half note, so nothing at 3.5
+if (beats==3)
+{
+// At 3.5: nothing (snare4/snare3 half note continues)
+}
+else if (beats==4)
+{
+// At 4.5: hat for both
+extreme2_play("beat4hat");
+}
+}
+
+// Perform delayed beat switch after beat 4.5 sound plays
+if (beats==4 and extreme2_do_switch_after_halfbeat==true)
+{
+extreme2_do_switch_after_halfbeat=false;
+extreme2_command_count=0;
+extreme2_beat++;
+if (extreme2_beat>4)
+{
+extreme2_beat=1;
+// Speed up after all 4 beats complete their cycle
+// Normal mode: max speed 5, Turbo: max speed 6 (index 5)
+int max_speed = turbo ? 11 : 4;
+if (extreme2_speed_level < max_speed)
+{
+extreme2_speed_level++;
+}
+}
+// Update beattime for new beat type (timing varies per beat)
+beattime = 2 * extreme2_note_time();
+failtime = 400 + (extreme2_note_time() * 5);  // Faster speed = less time to respond
+// Reset to start beat sequence - don't restart beattimer to maintain rhythm flow
+measure=0;
+beats=0;
+commandmeasure=0;
+extreme2_beat_just_switched=true;
+// beattimer continues naturally - next main beat will be beat 1 of new sequence
+}
+}
+
+void extreme2_checkstuff()
+{
+// Start beat - measure 0
+if (measure==0)
+{
+if (extreme2_beat==1)
+{
+// beat1kick, beat1kick, beat1kick2, beat1kick
+if (beats==1) extreme2_play("beat1kick");
+else if (beats==2) extreme2_play("beat1kick");
+else if (beats==3) extreme2_play("beat1kick2");
+else if (beats==4) extreme2_play("beat1kick");
+}
+else if (extreme2_beat==2)
+{
+// beat2snare3, beat2kick, beat2kick, beat2snare2
+if (beats==1) extreme2_play("beat2snare3");
+else if (beats==2) extreme2_play("beat2kick");
+else if (beats==3) extreme2_play("beat2kick");
+else if (beats==4) extreme2_play("beat2snare2");
+}
+else if (extreme2_beat==3)
+{
+// beat3kick, beat3bongo, beat3hat, beat3percbell (main beats, quarters on half)
+if (beats==1) extreme2_play("beat3kick");
+else if (beats==2) extreme2_play("beat3bongo");
+else if (beats==3) extreme2_play("beat3hat");
+else if (beats==4) extreme2_play("beat3percbell");
+}
+else if (extreme2_beat==4)
+{
+// All quarter notes: snare3, kicksnare, snare3, snare3 | snare3, snare3, snare3, kicksnare
+if (beats==1) extreme2_play("beat4snare3");
+else if (beats==2) extreme2_play("beat4snare3");
+else if (beats==3) extreme2_play("beat4snare3");
+else if (beats==4) extreme2_play("beat4snare3");
+}
+}
+// Start beat - measure 1
+else if (measure==1)
+{
+if (extreme2_beat==1)
+{
+// beat1kick4, beat1kick3, beat1snare (half), beat1perc (quarter), beat1perc2 (quarter)
+// snare is half note (beats 3-3.5), perc at beat 4, perc2 at 4.5 (in halfbeat)
+if (beats==1) extreme2_play("beat1kick4");
+else if (beats==2) extreme2_play("beat1kick3");
+else if (beats==3) extreme2_play("beat1snare");
+else if (beats==4) extreme2_play("beat1perc");
+}
+else if (extreme2_beat==2)
+{
+// beat2kick, beat2kick, beat2snare, beat2kick
+if (beats==1) extreme2_play("beat2kick");
+else if (beats==2) extreme2_play("beat2kick");
+else if (beats==3) extreme2_play("beat2snare");
+else if (beats==4) extreme2_play("beat2kick");
+}
+else if (extreme2_beat==3)
+{
+// beat3hat, beat3bongobell, beat3hatbell, beat3hat
+if (beats==1) extreme2_play("beat3hat");
+else if (beats==2) extreme2_play("beat3bongobell");
+else if (beats==3) extreme2_play("beat3hatbell");
+else if (beats==4) extreme2_play("beat3hat");
+}
+else if (extreme2_beat==4)
+{
+// Line 3-4 main: snare3(1), snare3(2), snare3(3), nothing(4)
+if (beats==1) extreme2_play("beat4snare3");
+else if (beats==2) extreme2_play("beat4snare3");
+else if (beats==3) extreme2_play("beat4snare3");
+// beats==4 is nothing
+}
+}
+// Normal gameplay
+else if (measure>1)
+{
+// Beat 3: main beat sounds
+if (beats==3 and passmode==false)
+{
+if (succeeded==false)
+{
+// WAITING for player - "Beats after command beats"
+if (extreme2_beat==1) extreme2_play("beat1snare2");  // quarter
+else if (extreme2_beat==2) extreme2_play("beat2snare3");  // half
+else if (extreme2_beat==3) extreme2_play("beat3kick");  // quarter (swapped)
+else if (extreme2_beat==4) extreme2_play("beat4kickhat");  // was kick
+}
+else
+{
+// Player SUCCEEDED - use extreme2_last_command to check completed command
+// Twist it = command 3 (KEY_RIGHT)
+if (extreme2_last_command==3 and (extreme2_beat==1 or extreme2_beat==2))
+{
+// TWIST IT special - snare2 at beat 3 for both beat types
+if (extreme2_beat==1) extreme2_play("beat1snare2");
+else if (extreme2_beat==2) extreme2_play("beat2snare2");
+}
+else
+{
+// Regular "After successful command beats"
+if (extreme2_beat==1) extreme2_play("beat1snare2");  // half
+else if (extreme2_beat==2) extreme2_play("beat2snare3");  // half
+else if (extreme2_beat==3) extreme2_play("beat3percbell2");  // quarter (swapped)
+else if (extreme2_beat==4) extreme2_play("beat4snare3");  // half
+}
+}
+}
+// Beat 4: main beat sounds
+else if (beats==4 and passmode==false)
+{
+if (succeeded==false)
+{
+// WAITING for player - "Beats after command beats"
+if (extreme2_beat==1) extreme2_play("beat1kick5");  // quarter
+else if (extreme2_beat==2) extreme2_play("beat2kick3");  // half
+else if (extreme2_beat==3) extreme2_play("beat3bell");  // quarter - was hatc
+else if (extreme2_beat==4) extreme2_play("beat4kickhat");  // quarter (after snare4 half)
+}
+else
+{
+// Player SUCCEEDED
+// Twist it = command 3 (KEY_RIGHT)
+if (extreme2_last_command==3 and (extreme2_beat==1 or extreme2_beat==2))
+{
+// TWIST IT special - hat2 at beat 4 for beat type 1
+if (extreme2_beat==1) extreme2_play("beat1hat2");
+else if (extreme2_beat==2) extreme2_play("beat2kick2");
+}
+else
+{
+// Regular "After successful command beats"
+if (extreme2_beat==1) extreme2_play("beat1hat2");  // quarter (after snare2 half)
+else if (extreme2_beat==2) extreme2_play("beat2kick2");  // half
+else if (extreme2_beat==3) extreme2_play("beat3kick");  // quarter (was beat3percbell2)
+else if (extreme2_beat==4) extreme2_play("beat4hat");  // quarter (after snare3 half)
+}
+}
+// Check for pending beat switch - delay until after beat 4.5 halfbeat
+if (extreme2_pending_beat_switch==true)
+{
+extreme2_pending_beat_switch=false;
+extreme2_do_switch_after_halfbeat=true;
+// Don't return - let win check and other logic continue, switch happens in halfbeat
+}
+// Win check
+if ((score>=250 and turbo==false) or (score>=500 and turbo==true))
+{
+extreme2_play_win();
+extreme2_hs=score;
+set.write_number("extreme2_score",extreme2_hs);
+extreme2_play("hs");
+wait(1000*timercalc);
+extreme2_playscore();
+extreme2_waiting();
+}
+}
+// Beat 1: give new command
+else if (beats==1)
+{
+if (succeeded==true and measure>=commandmeasure+2)
+{
+score+=1;
+passscore+=1;
+// Determine next command (no pass it for solo or one_on_one modes)
+if (mode==2 or mode==3 or mode==5 or mode==6)
+command=random(1,5);
+else
+{
+if (passscore>3)
+command=random(1,6);
+else
+command=random(1,5);
+if (passscore>=15)
+command=6;
+}
+commandmeasure=measure;
+if (command==6)
+{
+extreme2_play("passit");
+wait(4 * extreme2_note_time());  // Wait 4 beats for announcement
+extreme2_play_pass_melody();
+// Reset to start new beat sequence
+measure=0;
+commandmeasure=0;
+beats=0;
+passscore=0;
+beattimer.force(gamebeattime);  // Trigger beat immediately
+}
+else
+{
+if (mode>=4)
+extreme2_play(command+"_3");
+else
+extreme2_play(""+command);
+if (autopilot==true)
+{
+reset_all_forced_keys();
+autopilottimer.restart();
+autopilottime=random(500,800)-autolevel;
+}
+extreme2_last_command=0;  // Reset - no longer in success phase
+succeeded=false;
+failtimer.restart();
+}
+}
+}
+}
+}
+
+void extreme2_play_pass_melody()
+{
+if (extreme2_beat==1 or extreme2_beat==3)
+{
+// Pass melody 1 uses beat 1's timing
+int quarter = extreme2_beat1_speeds[extreme2_speed_level];
+int half = 2 * quarter;
+// Pass melody 1: 1,2,3,4 quarters, 5 half, 6,7 quarters, 8 half, 9,10 quarters
+extreme2_play("pass1_1");
+wait(quarter);
+extreme2_play("pass1_2");
+wait(quarter);
+extreme2_play("pass1_3");
+wait(quarter);
+extreme2_play("pass1_4");
+wait(quarter);
+extreme2_play("pass1_5");
+wait(half);
+extreme2_play("pass1_6");
+wait(quarter);
+extreme2_play("pass1_7");
+wait(quarter);
+extreme2_play("pass1_8");
+wait(half);
+extreme2_play("pass1_9");
+wait(quarter);
+extreme2_play("pass1_10");
+wait(EXTREME2_SOUND_LENGTH);  // Wait for last note to finish
+}
+else
+{
+// Pass melody 2 uses beat 2's timing
+int quarter = extreme2_beat2_speeds[extreme2_speed_level];
+// Pass melody 2: 6 notes (200ms sounds) - pass2_1, pass2_2, pass2_3, pass2_2, pass2_1, pass2_4
+int pass2_quarter = quarter + 100;  // 200ms sound (100ms extra) + gap
+extreme2_play("pass2_1");
+wait(pass2_quarter);
+extreme2_play("pass2_2");
+wait(pass2_quarter);
+extreme2_play("pass2_3");
+wait(pass2_quarter);
+extreme2_play("pass2_2");
+wait(pass2_quarter);
+extreme2_play("pass2_1");
+wait(pass2_quarter);
+extreme2_play("pass2_4");
+wait(200);  // Wait for last note to finish (200ms sounds)
+}
+}
+
+void extreme2_play_lose_beat()
+{
+// Beat 1 lose sequence - use new timing system
+int quarter = extreme2_note_time();
+int half = 2 * quarter;
+extreme2_play("beat1kick6");
+wait(quarter);
+extreme2_play("beat1snare2");
+wait(quarter);
+extreme2_play("beat1kick4");
+wait(quarter);
+extreme2_play("beat1kick3");
+wait(quarter);
+extreme2_play("beat1snare");
+wait(half);
+extreme2_play("beat1hat");
+wait(half);
+extreme2_play("beat1kick6");
+wait(quarter);
+extreme2_play("beat1snare2");
+wait(quarter);
+extreme2_play("beat1kick4");
+wait(quarter);
+extreme2_play("beat1kick3");
+wait(quarter);
+extreme2_play("beat1snare");
+wait(half);
+extreme2_play("1_2");
+wait(500*timercalc);
+}
+
+void extreme2_game_one_on_one()
+{
+// One-on-one mode: works like regular game but bop it scores for green/yellow teams
+bool halfcheck=false;
+// Reset speed to level 0 (speed 1)
+extreme2_speed_level = 0;
+// beattime = 2 * note_time (varies per beat type)
+beattime = 2 * extreme2_note_time();
+failtime=1100;
+failtimer.restart();
+beattimer.restart();
+beattimer.force(200);
+score=-1;
+commandmeasure=0;
+succeeded=true;
+beats=0;
+measure=0;
+extreme2_beat=1;
+extreme2_command_count=0;
+extreme2_beat_just_switched=false;
+extreme2_pending_beat_switch=false;
+extreme2_do_switch_after_halfbeat=false;
+extreme2_last_command=0;
+extreme2_green_score=0;
+extreme2_yellow_score=0;
+passmode=false;
+
+while(batteries_inserted==3)
+{
+battery_keys();
+if (batteries_inserted<3)
+return;
+wait(5);
+touch.monitor();
+batterydrain();
+gamespeed_loop();
+
+// Special bop it handling for one-on-one (green/yellow teams)
+if (command==1 and succeeded==false)
+{
+if (key_pressed(KEY_DOWN))
+{
+play("1_"+random(1,2)+".ogg",false,true);
+extreme2_play("green");
+wait(400);  // Wait for green sound
+extreme2_green_score++;
+succeeded=true;
+extreme2_beat++;
+if (extreme2_beat>4)
+{
+extreme2_beat=1;
+// Speed up after all 4 beats complete their cycle
+int max_speed = turbo ? 11 : 4;
+if (extreme2_speed_level < max_speed)
+{
+extreme2_speed_level++;
+}
+}
+// Update beattime for new beat type
+beattime = 2 * extreme2_note_time();
+failtime = 400 + (extreme2_note_time() * 5);
+extreme2_command_count=0;
+measure=0;
+beats=0;
+commandmeasure=0;
+beattimer.force(gamebeattime);  // Continue beat immediately
+if (extreme2_green_score+extreme2_yellow_score>=6)
+{
+extreme2_one_on_one_end();
+return;
+}
+continue;
+}
+else if (key_pressed(KEY_SPACE))
+{
+play("1_"+random(1,2)+".ogg",false,true);
+extreme2_play("yellow");
+wait(400);  // Wait for yellow sound
+extreme2_yellow_score++;
+succeeded=true;
+extreme2_beat++;
+if (extreme2_beat>4)
+{
+extreme2_beat=1;
+// Speed up after all 4 beats complete their cycle
+int max_speed = turbo ? 11 : 4;
+if (extreme2_speed_level < max_speed)
+{
+extreme2_speed_level++;
+}
+}
+// Update beattime for new beat type
+beattime = 2 * extreme2_note_time();
+failtime = 400 + (extreme2_note_time() * 5);
+extreme2_command_count=0;
+measure=0;
+beats=0;
+commandmeasure=0;
+beattimer.force(gamebeattime);  // Continue beat immediately
+if (extreme2_green_score+extreme2_yellow_score>=6)
+{
+extreme2_one_on_one_end();
+return;
+}
+continue;
+}
+}
+
+// Regular command handling for non-bop-it commands
+for (uint i=1; i<commands.length(); i++)
+{
+if (key_pressed(commands[i].key) and succeeded==false)
+{
+if (command==(i+1))
+{
+play((i+1)+"_"+random(1,2)+".ogg",false,true);
+extreme2_play((i+1)+"_2");
+extreme2_last_command=command;
+succeeded=true;
+extreme2_command_count++;
+if (extreme2_command_count>=(turbo ? 8 : 16))
+{
+extreme2_pending_beat_switch=true;
+}
+beattimer.restart();
+measure=commandmeasure+1;
+beats=1;
+break;
+}
+else
+{
+play((i+1)+"_"+random(1,2)+".ogg",false,true);
+extreme2_one_on_one_lose();
+return;
+}
+}
+}
+
+if (failtimer.elapsed>=failtime*timercalc and succeeded==false)
+{
+extreme2_one_on_one_lose();
+return;
+}
+
+if (beattimer.elapsed>=gamebeattime/2 and halfcheck==false)
+{
+halfcheck=true;
+extreme2_halfbeat();
+}
+
+if (beattimer.elapsed>=gamebeattime)
+{
+halfcheck=false;
+beattimer.restart();
+beats+=1;
+if (beats>4)
+{
+beats=1;
+measure+=1;
+}
+// Use regular checkstuff but skip pass it (command 6)
+extreme2_one_on_one_checkstuff();
+}
+
+if (key_pressed(KEY_ESCAPE) or key_pressed(KEY_AC_BACK))
+{
+exit();
+}
+}
+}
+
+void extreme2_one_on_one_checkstuff()
+{
+// Just call regular checkstuff - pass it is now blocked for one_on_one modes
+extreme2_checkstuff();
+}
+
+void extreme2_one_on_one_end()
+{
+string winner;
+if (extreme2_green_score>extreme2_yellow_score)
+winner="green";
+else if (extreme2_yellow_score>extreme2_green_score)
+winner="yellow";
+else
+winner="";
+if (winner!="")
+{
+extreme2_play(winner);
+wait(700*timercalc);
+extreme2_play("wins");
+wait(1000*timercalc);
+}
+reset_all_forced_keys();
+extreme2_waiting();
+}
+
+void extreme2_one_on_one_lose()
+{
+extreme2_play("ouch");
+wait(1100);
+if (random(1,2)==1)
+extreme2_playcomment();
+extreme2_play("out");
+wait(900*timercalc);
+reset_all_forced_keys();
+extreme2_waiting();
+}
+
+void extreme2_playscore()
+{
+// Use number speaker to announce score with actual number words
+extreme2_ns.speak_wait(score);
+}
+
+void extreme2_playcomment()
+{
+if (score>extreme2_hs)
+extreme2_play("good"+random(1,3), true);
+else
+extreme2_play("bad"+random(1,7), true);
+}
+
+void extreme2_play_win()
+{
+extreme2_play("good"+random(1,3), true);
+reset_all_forced_keys();
+}

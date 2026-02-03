@@ -1,0 +1,5 @@
+[build]
+output_basename=BopItEmulator
+product_identifier=me.masonasons.BopItEmulator
+product_name=Bop It Emulator
+product_version=4.0

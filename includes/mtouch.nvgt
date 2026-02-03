@@ -1,0 +1,23 @@
+touch_gesture_manager ftouch, mtouch;
+void setup_mtouch()
+{
+touch_keyboard_interface touchmenu(mtouch, {
+{"swipe_up1f",KEY_UP},
+{"swipe_down1f",KEY_DOWN},
+{"swipe_left1f",KEY_LEFT},
+{"swipe_right1f",KEY_RIGHT},
+{"swipe_left2f",KEY_ESCAPE},
+{"swipe_right2f",KEY_RETURN},
+{"double_tap1f",KEY_RETURN},
+{"swipe_down2f",KEY_END},
+{"swipe_up2f",KEY_HOME},
+{"swipe_down3f",KEY_PAGEDOWN},
+{"swipe_up3f",KEY_PAGEUP}
+});
+mtouch.add_touch_interface(touchmenu);
+}
+void mtouch_callback(menu@ m, string data="")
+{
+if (mtouch.is_available())
+mtouch.monitor();
+}

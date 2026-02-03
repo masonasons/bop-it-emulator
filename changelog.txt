@@ -1,0 +1,97 @@
+New in 4.0 B8
+Add Bop It Extreme2!
+Add sound preloading for all bop its to make the gameplay much smoother.
+Update NVGT. We're now using the new sound system, and the new menu class! Report any oddities.
+Things save on Android!
+Adds current battery level to the bop it menu.
+Changes bop it menu gesture to one finger double tap.
+Fixes android gesture weirdness with the two finger swipes left and right.
+Makes Android speak window title updates.
+Implement a menu accessed on the keyboard with Space, or on android by a two finger single tap, where you can access most of the single key commands such as turbo mode, autopilot, etc.
+Adds speech feedback to most commands.
+First android build!
+Puts a cap on battery capacity to prevent battery brokenness.
+Change the way battery capacity is changed for compatibility with other OS's. Now, change it with C rather than a text file.
+Changes to NVGT's new settings class as a replacement for savedata.
+Check for existence of capacity.txt, or lack thereof on android.
+Removes joystick support because no joystick support in NVGT currently.
+In light of Android support in NVGT, ports this thing to NVGT finally!
+Adds more credits to the readme that I totally forgot to add originally, thanks Jonathan Rodriguez for bringing it to my attention that I didn't do so.
+Fixes high score didn't properly reset, thanks Thomas Grant.
+Adds speech feedback for changing mechanics.
+Makes the state of mechanics save.
+
+New in 3.1
+Redesigns the saving system! Now, battery percentages as well as amount of inserted batteries saves. Also the current and in the case of the extreme, high score, saves for the current set of batteries. Note that as the extreme and original BopIts in this emulator run on the same set of batteries, when you extract a battery and reinsert it, your scores will reset.
+Adds the ability to turn off mechanic sounds by pressing M.
+Fixes a bug reported by Tom Grant where if you replace the batteries in your Bop It, the game would continue on at the last pitch it got to before you changed the batteries, while reporting the battery percentage as 99%.
+
+New in 3.0
+Adds the ability to put batteries in your BopIt. In fact you have to do this now in order to use your Bop It and this can be used to reset a dead battery back to 100%! Press R to insert a battery and shift R to remove one.
+Fixes a bug where if you took a battery out of your BopIt while auto pilot was playing the game, you would be unable to activate any of the Bop It commands.
+A lot of code cleanup/reorganization.
+Fixes a glitch that could occur when in pass it mode and a round begins that would immediately cause the bop it to ask you to pass the game.
+Note in readme that Turbo Mode is for both models now.
+Adds mechanical sounds for performing actions in Bop It! Note. I do not have sounds for bop it mechanics for anything other than the 2002 Bop It and the Extreme, no Pen variation or 2004 Bop It, so unfortunately this is what you get but it's better than nothing!
+Adjusts pull it timer in Bop It Extreme when cycling through modes.
+More updates and refinements to the low battery mode!
+Painstakingly redesigns, and in the case of bop it original, adds, difficulty curves. I feel the game has been way too easy for way too long. This version aims to fix that.
+Adds turbo and proper quick score mode to BopIt original model, bringing it in line with the extreme as far as extra features.
+Fixes a bug that meant once you started up the BopIt, the first time the game would allow you to pull it to switch through the game modes as fast as you wanted, and after playing a game, it would not. This was because some initial variables weren't being set on launch, only after a gameplay.
+
+New in 2.5
+Walks back BopIt extreme playing the winning sequence when you check your high score, as this model actually does not do that. Thanks Brandon Tyson for the confirmation!
+
+New in 2.4
+Play the winning sequence again if you twist it and you have a high score of the maximum winning score. I'm not sure if this is the correct behavior for all models, so you'll have to let me know. Thanks Tom Grant for the suggestion.
+
+New in 2.3
+Adjusts bop it pen modes to require a pull it in order to turn on the pen and makes subsequent pull its repeat "Bop it" (Thanks Acer)
+Adds the joystick vibration support to the losing and score playing!
+Much more robust low battery mode including more accurate timers, updating of window title after each loss of the game with the new battery level, and the availability to set battery capacity.
+Updates the readme.
+
+New in 2.2
+Slows down battery drain
+Fixes bug with announcing high scores.
+Adds the extreme has high score saving.
+Fixes winning sound pitch doesn't match battery pitch.
+New in 2.1
+Added joystick/gamepad support.
+Removed the ability to flip the BopIt Orientation.
+From now on, the score will not attempt to be announced if it is 0.
+Adds battery draining; your BopIt's batteries can run low! Play for a while without restarting and see what happens!
+Adds the proper win sound for Bopit extreme.
+Makes it so title updates are spoken by JFW as well.
+Combines Bop It models into one program!
+New in 2.0
+Bop It Extreme emulator added (Beta)
+Adds a keyhook for JFW
+Makes pressing Down arrow to start a new game more reliably responsive
+Adds Q to toggle quick score mode on and off.
+Fixes bop it pen mode to give you the correct amount of moves
+Increases wait time for the bop it pen and 200 modes before your score is played.
+Speeds up pen winning sequence slightly
+New in 1.6
+Adds bop it pen emulation modes
+Corrects original mode names
+New in 1.51
+Fixes an auto pilot stuck keys bug.
+New in 1.5
+Adds autopilot mode.
+Adjusts failing a bit.
+New in 1.4
+After playing with my BopIt 2000 model, I've noticed some more stability in the beat/voice playing versus the 1996 model. Added changes to reflect this.
+New in 1.3
+Adds delay between switching modes.
+Adjusts solo mode slightly, specifically the amount of time it takes to play the score cipher as well as adding the drum stinger after losing.
+Adjusts pass it mode slightly.
+Tweeked score playback speed.
+Yet again improved sounds, thanks to Xander, @cordova5029
+New in 1.2
+Much improved sounds.
+Score no longer announced on supposed pass it modes.
+The pass it modes are now working.
+Adds the 2000 bop it emulation mode.
+New in 1.1
+Adds reversable orientation key.

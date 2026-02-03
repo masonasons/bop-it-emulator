@@ -1,0 +1,486 @@
+// Preloaded sound pool for original
+dictionary original_sounds;
+
+void original_preload_sounds()
+{
+	string[] sound_names = {
+		// Command sounds
+		"1", "1b", "1c", "2", "2b", "2c", "3", "3b", "3c",
+		// Beat sounds
+		"drumkick", "drumsnare",
+		// Glitch sounds
+		"glitch1", "glitch2",
+		// Game sounds
+		"losesolo", "ouch", "passit",
+		// Tones
+		"tone1", "tone2", "tone3", "tone4",
+		// Win sounds
+		"win", "winpen"
+	};
+
+	for (uint i = 0; i < sound_names.length(); i++)
+	{
+		sound@ s = sound();
+		s.load("original/" + sound_names[i] + ".ogg");
+		original_sounds.set(sound_names[i], @s);
+	}
+}
+
+void original_play(string name, bool wait_for_sound = false)
+{
+	sound@ s;
+	if (original_sounds.get(name, @s))
+	{
+		s.seek(0);
+		s.play();
+		if (wait_for_sound)
+			while (s.playing) wait(5);
+	}
+}
+
+void init_original()
+{
+score=set.read_number("orig_score",0);
+mechpath="2002";
+add_command(KEY_DOWN);
+add_command(KEY_LEFT);
+add_command(KEY_RIGHT);
+soundpath="original";
+original_test_mode_item_helper2("2b",1.25);
+original_test_mode_item_helper2("3c",1.65);
+original_test_mode_item_helper2("1c",1.65);
+original_test_mode_item_helper2("1",1.65);
+original_test_mode_item_helper2("3",1.65);
+original_test_mode_item_helper2("2",1.65);
+original_test_mode_item_helper2("1b",1.25);
+original_test_mode_item_helper2("3b",1.25);
+original_test_mode_item_helper2("2c",1.65);
+original_test_mode_item_helper2("passit",1.65,2);
+original_test_mode_item_helper3();
+test_mode_item("ouch",980);
+test_mode_item("ouch",980);
+test_mode_item("losesolo",1600);
+test_mode_item("2b",280);
+test_mode_item("3b",280);
+test_mode_item("1b",280);
+test_mode_item("3b",500);
+test_mode_item("1c",500);
+test_mode_item("win",9000);
+}
+void original()
+{
+init_original();
+original_preload_sounds();
+update_title("Bop it! Emulator (On 1996 BopIt mode)");
+if (screen_reader_is_running(1)) install_keyhook();
+original_play("1");
+orig_waiting();
+}
+void orig_waiting()
+{
+while(true)
+{
+shared_wait();
+if (key_pressed(KEY_TAB) and switchtimer.elapsed>=switchtime)
+{
+switchtimer.restart();
+reset();
+if (batteries_inserted<3)
+batteries_inserted=0;
+extreme();
+}
+if (key_pressed(KEY_B))
+{
+orig_change_mode();
+}
+if (key_pressed(KEY_RIGHT))
+{
+play("3_"+random(1,2)+".ogg",false,true);
+if (mode==3)
+orig_playscore();
+}
+if (key_pressed(KEY_LEFT))
+{
+play("2_"+random(1,2)+".ogg",false,true);
+if (batteries_inserted==3)
+{
+if (mode2000!=2)
+mode+=1;
+else
+mode=3;
+if (mode==1)
+original_play("1b");
+else if (mode==2)
+original_play("3b");
+else if (mode==3)
+{
+if (mode2000!=2)
+original_play("2b");
+else
+original_play("1");
+}
+else
+{
+mode=1;
+original_play("1b");
+}
+wait(230*timercalc);
+}
+}
+if (key_pressed(KEY_DOWN))
+{
+play("1_"+random(1,2)+".ogg",false,true);
+if (mode>0)
+orig_game();
+}
+}
+}
+void orig_game()
+{
+play_revision=false;
+failtime=950;
+beattime=200;
+failtimer.restart();
+beattimer.restart();
+beattimer.force(200);
+score=-1;
+commandmeasure=0;
+succeeded=true;
+beats=0;
+measure=0;
+autopilottimer.restart();
+while(batteries_inserted==3)
+{
+battery_keys();
+if (batteries_inserted<3)
+return;
+engineloop();
+if (failtimer.elapsed>=failtime*timercalc and succeeded==false)
+{
+original_play("ouch");
+update_title();
+wait(950*timercalc);
+if (mode==3)
+{
+original_play("losesolo");
+wait(1700*timercalc);
+orig_playscore();
+set.write_number("orig_score",score);
+}
+else
+score=0;
+reset_all_forced_keys();
+orig_waiting();
+}
+if (beattimer.elapsed>=gamebeattime)
+{
+beattimer.restart();
+beats+=1;
+if (beats>4)
+{
+beats=1;
+measure+=1;
+}
+orig_checkstuff();
+}
+if (key_pressed(KEY_ESCAPE) or key_pressed(KEY_AC_BACK))
+{
+exit();
+}
+}
+}
+void orig_checkstuff()
+{
+if (beats==1 and measure==0)
+{
+original_play("drumkick");
+}
+else if (beats==3 and measure==0)
+{
+original_play("drumsnare");
+}
+else if (beats==1 and measure==1)
+{
+original_play("drumkick");
+}
+else if (beats==2 and measure==1)
+{
+original_play("drumkick");
+}
+else if (beats==3 and measure==1)
+{
+original_play("drumsnare");
+}
+else if (beats==4 and measure==1)
+{
+original_play("drumkick");
+}
+else if (beats==1 and passmode==true and measure-passmeasure>=1)
+{
+original_play("tone3");
+}
+else if (beats==2 and passmode==true and measure-passmeasure>=1)
+{
+original_play("tone2");
+}
+else if (beats==3 and passmode==true and measure-passmeasure>=1)
+{
+original_play("tone1");
+}
+else if (beats==4 and passmode==true and measure-passmeasure>=1)
+{
+original_play("tone4");
+if (mode2000==0)
+wait(50);
+beattimer.force(0);
+passmode=false;
+measure=0;
+commandmeasure=0;
+beats=0;
+passscore=0;
+}
+else if (beats==3 and measure>1)
+{
+if (passmode==true)
+{
+if (measure-passmeasure==0)
+original_play("tone1");
+}
+else
+original_play("drumsnare");
+}
+else if (beats==4 and measure>1)
+{
+if (passmode==true)
+{
+if (measure-passmeasure==0)
+original_play("tone2");
+}
+else
+original_play("drumkick");
+if ((score>=100 and turbo==false or score>=200 and turbo==true) and mode2000==0 or (score>=200 and turbo==false or score>=400 and turbo==true) and mode2000==1 or (score>=15 and turbo==false or score>=30 and turbo==true) and mode2000==2)
+{
+if (mode2000==1 or mode2000==2)
+wait(1500);
+if (mode2000==2)
+orig_playscore();
+orig_waiting();
+}
+}
+else if (beats==1 and measure>1)
+{
+if (succeeded==true and measure>=commandmeasure+2)
+{
+score+=1;
+passscore+=1;
+if (beattime>=160 and turbo==false or beattime>=80 and turbo==true)
+{
+if (mode2000==2)
+beattime-=4;
+else
+beattime-=1;
+}
+failtime=950-((200-beattime)*6);
+if (mode==3)
+command=random(1,3);
+else
+{
+if (passscore>3)
+command=random(1,4);
+else
+command=random(1,3);
+if (passscore>=15)
+command=4;
+}
+commandmeasure=measure;
+if (mode2000==0)
+wait(50);
+if (command==4)
+{
+original_play("passit");
+if (mode2000==0)
+beattimer.force(beattime-190);
+passmode=true;
+passmeasure=measure;
+}
+else
+{
+if (mode==2)
+original_play(command+"c");
+else
+original_play(""+command);
+if (autopilot==true)
+{
+simulate_key_up(KEY_DOWN);
+simulate_key_up(KEY_RIGHT);
+simulate_key_up(KEY_LEFT);
+autopilottimer.restart();
+autopilottime=random(500,800)-autolevel;
+}
+if (mode2000==1)
+beattimer.force(beattimer.elapsed+80);
+succeeded=false;
+failtimer.restart();
+}
+}
+}
+}
+void orig_playscore()
+{
+int cypher=score;
+int scoretime=525*timercalc;
+if (quickscore==true)
+{
+if (turbo==false)
+scoretime=260*timercalc;
+else
+scoretime=130*timercalc;
+}
+else
+{
+if (turbo==true)
+scoretime=260*timercalc;
+}
+if (scoreoption==1)
+{
+while (cypher>0)
+{
+if (play_revision==false)
+{
+if (cypher>=100)
+{
+cypher-=100;
+original_play("2b");
+wait(scoretime);
+}
+if (cypher>=10 and cypher<100)
+{
+cypher-=10;
+original_play("3b");
+wait(scoretime);
+}
+}
+if (cypher>=1 and (cypher<10 and play_revision==false or play_revision==true))
+{
+cypher-=1;
+original_play("1c");
+wait(scoretime);
+}
+}
+}
+if (score>=100 and mode2000==0 or score>=200 and mode2000==1 or score>=15 and mode2000==2)
+{
+if (mode2000==2)
+original_play("winpen", true);
+else
+original_play("win", true);
+reset_all_forced_keys();
+}
+}
+void original_test_mode_item_helper(string sound,double time,double factor,int mode=1)
+{
+test_mode_item(sound,time*(mode==1?2.0:2.45));
+if (mode==1)
+{
+test_mode_item("drumsnare",time);
+test_mode_item("drumkick",time*factor);
+}
+else
+{
+test_mode_item("tone1",time);
+test_mode_item("tone2",time);
+test_mode_item("tone3",time);
+test_mode_item("tone2",time);
+test_mode_item("tone1",time);
+test_mode_item("tone4",time*factor);
+}
+}
+void original_test_mode_item_helper2(string sound, double factor, int mode=1)
+{
+int time=200;
+for (uint i=1; i<=5; i++)
+{
+original_test_mode_item_helper(sound,time,factor,mode);
+time-=12;
+factor-=0.05;
+}
+}
+void original_test_mode_item_helper3()
+{
+double time=200;
+double factor=1.25;
+for (uint i=1; i<=5; i++)
+{
+test_mode_item("drumkick",time*2);
+test_mode_item("drumsnare",time*2);
+test_mode_item("drumkick",time);
+test_mode_item("drumkick",time);
+test_mode_item("drumsnare",time);
+test_mode_item("drumkick",time*factor);
+time-=12;
+factor-=0.05;
+}
+}
+void original_action_test_mode()
+{
+original_play("3b");
+while(batteries_inserted==3)
+{
+wait(5);
+battery_keys();
+if (key_pressed(KEY_ESCAPE))
+exit();
+if (key_pressed(KEY_DOWN))
+{
+play("1_"+random(1,2)+".ogg",false,true);
+wait(20);
+original_play("1b");
+wait(300);
+}
+if (key_pressed(KEY_LEFT))
+{
+play("2_"+random(1,2)+".ogg",false,true);
+wait(20);
+original_play("2b");
+score=15;
+play_revision=true;
+wait(300);
+return;
+}
+if (key_pressed(KEY_RIGHT))
+{
+play("3_"+random(1,2)+".ogg",false,true);
+}
+}
+}
+void original_glitch()
+{
+int continue_glitch=random(1,2);
+original_play("glitch"+random(1,2));
+// Wait for glitch sound to play - approximate duration
+wait(2000);
+if (batteries_inserted==3 and continue_glitch==1)
+original_glitch();
+}
+void orig_change_mode()
+{
+if (mode2000==2)
+{
+mode2000=0;
+update_title("Bop it! Emulator (On 1996/2000 BopIt mode)");
+original_play("3b");
+}
+else if (mode2000==1)
+{
+mode2000=2;
+update_title("Bop it! Emulator (On Pen1 BopIt mode)");
+original_play("1");
+mode=0;
+}
+else if (mode2000==0)
+{
+mode2000=1;
+update_title("Bop it! Emulator (On 2004/Pen2 BopIt mode)");
+original_play("3c");
+}
+}

@@ -1,0 +1,465 @@
+#pragma document "changelog.txt"
+#pragma document "readme.txt"
+#pragma embed "hasbro"
+#include "../include/touch.nvgt"
+#include "menu.nvgt"
+#include "includes/mtouch.nvgt"
+#include "includes/menu.nvgt"
+#include "speech.nvgt"
+#include"includes/orig.nvgt"
+#include"includes/extreme.nvgt"
+#include"includes/extreme2.nvgt"
+#include"../include/sd.nvgt"
+#include"../include/number_speaker.nvgt"
+#include"../include/sound_manager.nvgt"
+int switchtime=200;
+bool play_mechanics=true;
+bool play_revision=false;
+int revision;
+string[] test_mode_sounds;
+int[] test_mode_times;
+int batteries_inserted=0;
+string mechpath="1996";
+string window_title;
+int hs;
+int keydown=0;
+double batterytime=15000;
+int pitch;
+double timercalc=0;
+double gamespeed=100;
+double battery=100;
+string soundpath;
+game_command@[] commands(0);
+bool turbo=false;
+bool quickscore=false;
+int autolevel;
+int autopilottime=300;
+bool autopilot;
+int passscore;
+int passmeasure;
+bool passmode;
+int mode2000=0;
+int flip=1;
+int mode;
+int scoreoption=1;
+int score=-1;
+int failtime;
+int commandmeasure;
+int command;
+bool succeeded=true;
+double beattime=200;
+int gamebeattime;
+int beats;
+int measure;
+int totalscore=-1;
+int pullkey, twistkey;
+timer batterytimer, autopilottimer, failtimer, beattimer, switchtimer;
+settings set();
+pack_file pf;
+touch_gesture_manager touch;
+sound_manager sm;
+void main()
+{
+int[] backb={KEY_LSHIFT,KEY_R};
+touch_keyboard_interface touchkeys(touch, {
+{"swipe_left1f", KEY_LEFT},
+{"swipe_right1f", KEY_RIGHT},
+{"swipe_up1f", KEY_UP},
+{"single_tap1f", KEY_DOWN},
+{"swipe_down1f", KEY_RETURN},
+{"swipe_left2f",KEY_TAB},
+{"swipe_right2f",KEY_TAB},
+{"swipe_down2f", backb},
+{"swipe_up2f", KEY_R},
+{"long_press1f",KEY_SPACE}
+});
+setup_mtouch();
+touch.add_touch_interface(touchkeys);
+set.setup("masonasons.me","bopit",OS==OS_WINDOWS_NT?true:false,"nvgt");
+battery=set.read_number("battery",100);
+batteries_inserted=set.read_number("batteries_inserted",0);
+play_mechanics=(set.read_number("play_mechanics",1)==1?true:false);
+int64 cap=set.read_number("capacity",100);
+if (cap>=100000)
+{
+cap=100000;
+set.write_number("capacity",cap);
+}
+batterytime=15000*(cap/100);
+pf.open("*hasbro");
+@sound_default_pack=@pf;
+sound_master_volume=-10;
+gamespeed_loop();
+original();
+}
+void reset_all_forced_keys()
+{
+for (uint i=0; i<commands.length(); i++)
+simulate_key_up(commands[i].key);
+}
+void reset()
+{
+reset_all_forced_keys();
+revision=0;
+test_mode_sounds.resize(0);
+test_mode_times.resize(0);
+commands.resize(0);
+keydown=0;
+quickscore=false;
+autolevel=0;
+autopilottime=300;
+autopilot=false;
+passscore=0;
+passmeasure=0;
+passmode=false;
+mode2000=0;
+flip=1;
+mode=0;
+scoreoption=1;
+score=-1;
+failtime=0;
+commandmeasure=0;
+command=0;
+succeeded=true;
+beattime=200;
+beats=0;
+measure=0;
+totalscore=-1;
+pullkey=0;
+twistkey=0;
+}
+void update_title(string t="") {
+bool speak_new_title=true;
+if (t!="")
+window_title=t;
+else
+{
+t=window_title+" (Battery "+battery+"%)";
+speak_new_title=false;
+}
+show_game_window(t);
+if ((screen_reader_detect()=="JAWS" or OS==OS_ANDROID) and speak_new_title==true)
+speak(t,true);
+}
+class game_command
+{
+int key;
+game_command(int ckey)
+{
+key=ckey;
+}
+}
+void add_command(int key)
+{
+game_command c1(key);
+commands.insert_last(c1);
+}
+void gamespeed_loop()
+{
+if (battery<=50)
+gamespeed=100+(100-battery*2.00);
+else
+gamespeed=100;
+timercalc=((gamespeed*2)/200);
+gamebeattime=(beattime*timercalc);
+//if (gamespeed>0)
+//p.behind_pitch_decrease=(gamespeed-100)*0.6;
+//else
+//p.behind_pitch_decrease=0;
+//pitch=100-p.behind_pitch_decrease;
+}
+void play(string filename, bool looping,bool mechanic=false)
+{
+if (mechanic==true)
+{
+if (play_mechanics==false)
+return;
+filename="mechanics/"+mechpath+"/"+filename;
+sm.play(filename,looping);
+wait(40);
+}
+else
+sm.play(filename,vector(0,0,0),looping);
+}
+void batterydrain()
+{
+if (batterytimer.elapsed>=batterytime)
+{
+batterytimer.restart();
+battery--;
+set.write_number("battery",battery);
+}
+}
+void engineloop()
+{
+wait(5);
+touch.monitor();
+batterydrain();
+gamespeed_loop();
+if (autopilot==true)
+{
+if (autopilottimer.elapsed>=autopilottime*timercalc)
+{
+autopilottimer.restart();
+for (uint i=0; i<commands.length(); i++)
+{
+if (command==(i+1))
+simulate_key_down(commands[i].key);
+}
+}
+}
+for (uint i=0; i<commands.length(); i++)
+{
+if (key_pressed(commands[i].key)  and succeeded==false)
+{
+keydown++;
+if (command==(i+1))
+{
+play((i+1)+"_"+random(1,2)+".ogg",false,true);
+play(soundpath+"/"+(i+1)+"b.ogg",false);
+succeeded=true;
+beattimer.restart();
+measure=commandmeasure+1;
+beats=1;
+keydown=0;
+break;
+}
+else
+{
+play((i+1)+"_"+random(1,2)+".ogg",false,true);
+succeeded=false;
+}
+}
+}
+if (succeeded==false and keydown==1)
+{
+keydown=0;
+failtimer.force(failtime);
+update_title();
+}
+}
+void shared_wait()
+{
+wait(5);
+touch.monitor();
+gamespeed_loop();
+if (key_pressed(KEY_SPACE))
+mainmenu();
+if (key_pressed(KEY_C))
+{
+int64 new_cap=parse_int(input_box("Battery Capacity","Enter the new battery capacity.",set.read_number("capacity",100)));
+if (new_cap>=100000)
+new_cap=100000;
+if (new_cap>0)
+{
+set.write_number("capacity",new_cap);
+batterytime=15000*(new_cap/100);
+}
+}
+if (key_pressed(KEY_M))
+{
+toggle_mechanics();
+}
+if (key_pressed(KEY_ESCAPE) or key_pressed(KEY_AC_BACK))
+{
+exit();
+}
+if (key_pressed(KEY_T))
+{
+toggle_turbo();
+}
+if (key_pressed(KEY_S))
+{
+toggle_autolevel();
+}
+if (key_pressed(KEY_Q))
+{
+toggle_quickscore();
+}
+if (key_pressed(KEY_A))
+{
+toggle_autopilot();
+}
+battery_keys();
+}
+void battery_keys()
+{
+if (key_pressed(KEY_R))
+{
+if (key_down(KEY_LSHIFT) or key_down(KEY_RSHIFT))
+{
+if (batteries_inserted==3)
+{
+sm.destroy_all();
+reset();
+if (soundpath=="original")
+{
+init_original();
+score=0;
+set.write_number("orig_score",score);
+}
+else
+{
+init_extreme();
+hs=0;
+set.write_number("extreme_score",hs);
+}
+battery=100;
+set.write_number("battery",battery);
+}
+if (batteries_inserted>0)
+{
+play("battery_out.ogg",false,true);
+wait(400);
+batteries_inserted--;
+set.write_number("batteries_inserted",batteries_inserted);
+speak(batteries_inserted+" batteries.");
+}
+}
+else
+{
+if (batteries_inserted<3)
+{
+play("battery_in.ogg",false,true);
+wait(900);
+batteries_inserted++;
+set.write_number("batteries_inserted",batteries_inserted);
+speak(batteries_inserted+" batteries.");
+if (batteries_inserted==3 and key_down(KEY_DOWN) and key_down(KEY_RIGHT) and key_up(KEY_LEFT))
+test_mode();
+if (batteries_inserted==3 and key_down(KEY_DOWN) and key_down(KEY_RIGHT) and key_down(KEY_LEFT) and soundpath=="extreme")
+revision_test_mode();
+if (batteries_inserted==3 and key_down(KEY_RIGHT) and soundpath=="original")
+original_action_test_mode();
+if (batteries_inserted==3 and key_down(KEY_DOWN) and soundpath=="original")
+original_glitch();
+}
+}
+}
+}
+void test_mode()
+{
+int index=-1;
+int time=0;
+timer tmtimer;
+bool played=false;
+while (index<test_mode_sounds.length() or batteries_inserted==3)
+{
+batterydrain();
+gamespeed_loop();
+shared_wait();
+if (played==false and index>=0)
+{
+play(test_mode_sounds[index],false);
+played=true;
+}
+if (tmtimer.elapsed>=time*timercalc)
+{
+tmtimer.restart();
+index++;
+if (index>=test_mode_sounds.length())
+return;
+played=false;
+time=test_mode_times[index];
+}
+}
+}
+void test_mode_item(string soundname,double time)
+{
+test_mode_sounds.insert_last(soundpath+"/"+soundname+".ogg");
+test_mode_times.insert_last(time);
+}
+void revision_test_mode()
+{
+score=revision;
+if (soundpath=="original")
+{
+orig_playscore();
+}
+else
+{
+extreme_playscore();
+wait(800);
+play("extreme/losesolo2.ogg",false);
+wait(1000);
+}
+score=0;
+}
+void toggle_mechanics()
+{
+play_mechanics=(play_mechanics==true?false:true);
+speak("Mechanics "+(play_mechanics==true?"On":"Off"));
+set.write_number("play_mechanics",(play_mechanics==true?1:0));
+}
+void toggle_turbo()
+{
+if (turbo==false)
+{
+turbo=true;
+play("extreme/4b.ogg",false);
+speak("Turbo mode!");
+}
+else if (turbo==true)
+{
+turbo=false;
+play("extreme/4.ogg",false);
+speak("Turbo off");
+}
+}
+void toggle_autolevel()
+{
+if (autolevel==0)
+{
+autolevel=70;
+play(soundpath+"/tone2.ogg",false);
+speak("Autopilot speed fast");
+}
+else if (autolevel==70)
+{
+autolevel=140;
+play(soundpath+"/tone3.ogg",false);
+speak("Autopilot speed medium");
+}
+else if (autolevel==140)
+{
+autolevel=220;
+play(soundpath+"/tone4.ogg",false);
+speak("Autopilot speed slow");
+}
+else
+{
+autolevel=0;
+play(soundpath+"/tone1.ogg",false);
+speak("Autopilot speed extreme");
+}
+}
+void toggle_quickscore()
+{
+if (quickscore==true)
+{
+quickscore=false;
+play(soundpath+"/2b.ogg",false);
+speak("Quick scores off");
+}
+else if (quickscore==false)
+{
+quickscore=true;
+play(soundpath+"/2c.ogg",false);
+speak("Quick scores on");
+}
+}
+void toggle_autopilot()
+{
+if (autopilot==true)
+{
+autopilot=false;
+play(soundpath+"/3b.ogg",false);
+speak("Autopilot off");
+}
+else if (autopilot==false)
+{
+autopilot=true;
+play(soundpath+"/3c.ogg",false);
+speak("Autopilot on");
+}
+}

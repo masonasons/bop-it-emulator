@@ -1,0 +1,84 @@
+Bop It Extreme2 idea
+
+The bop it extreme2 is based off the Bop It extreme. It's different in a few main ways. In the bop it extreme, when you turn it on, you get 4 modes accessed by the pull it, which are vox bop, vox bop solo, beat bop, and beat bop solo. On the bop it extreme2, you have a new mode added to these for each, one on one, in and vox bop/beat bop are now called vox bop pass it and beat bop pass it. You also now toggle between vox bop and beat bop with the flick it. So for example, pulling it would start with vox bop pass it, vox bop one on one, and then vox bop solo. It then would loop back around to vox bop pass it. If you press the flick it, it would then say beat bop, and then it would be on the last mode you were on for vox bop, but instead now in beat bop. And it would now say beat bop pass it, etc.
+Another main difference is that instead of the beat being the same the entire time, the bop it extreme2 cycles between four unique beats. The game does not speed up after each command, but rather, after reaching the last beat and wrapping back around to the first, it then speeds up slightly. Each beat runs for 16 commands, at which point the next beat starts with it's start sequence. It also alternates between two pass it melodies, if in pass it mode. It uses the first melody for beats 1 and 3, and the second for beats 2 and 4. All of the beats are listed below.
+In addition to this, each beat also has it's own sequence that it plays if the user loses on solo, also listed below. This sequence should play at the speed at which the game was at when the user loses.
+Finally, in beats 1 and 2, a separate beat sequence is played whenever the user performs a twist it command. These again will be listed below.
+The beats run in half notes. In order to play a quarter note, you will have to use the halfcheck, you can see this in action using the extreme code. You should always run through an entire 4 beats per measure with all beats, so if there's nothing for a beat, just play nothing but continue until you reset, see extreme code for this.
+
+The extreme2's high score is 250.
+
+Check the sounds/extreme2 folder for all of the sounds, and the extreme code for how these sounds should be used.
+
+One On One
+The way this mode works is it should play just like solo mode, however no score is kept. However, there are two bop it buttons in this mode, one activated with the spacebar. One is the green color, and one is the yellow color. If the game calls out bop it, whichever one of these colored bop it buttons is pressed should be announced, Yellow or Green, followed by the game immediately switching to the next beat. The game should only cycle to the next beat in this mode if a bop it button is pressed. The game ends after either a command is wrongly pressed, or a bop it button is pressed 6 times, at which point whichever button has been pressed more times wins, (color wins). When you lose in this mode, a bad comment is played, or nothing, followed by out.
+
+Start beats
+These beats play either when the user starts a game, or the beat is reached by the user reaching 16 commands and the beat switching. They also play if a pass it occurs (See extreme and original code). Finally, these beats play whenever a bop it button is pressed in one on one mode, after the color of that bop it button (Yellow/Green) is spoken.
+
+Beat1
+*half notes*
+beat1kick, beat1kick
+beat1kick2, beat1kick
+beat1kick4, beat1kick3
+beat1snare (half), beat1perc (quarter), beat1perc2 (quarter)
+
+Beat2
+*all half notes*
+beat2snare3, beat2kick
+beat2kick, beat2snare2
+beat2kick, beat2kick
+beat2snare, beat2kick
+
+beat3
+*all quarter notes*
+beat3kick, beat3hatc, beat3bongo, beat3bell
+beat3hat, beat3hatc, beat3percbell, beat3perc
+beat3hat, beat3hatc, beat3bongobell, beat3hat
+beat3hatbell, nothing, beat3hat, beat3hatc
+
+beat4
+*all quarter notes*
+beat4snare3, beat4kicksnare, beat4snare3, beat4snare3
+beat4snare3, beat4snare3, beat4snare3, beat4kicksnare
+beat4snare3, beat4snare3, beat4snare3, beat4kicksnare
+beat4snare3, beat4kicksnare, nothing, nothing
+
+After successful command beats
+These are the beats that will play after a command is successfully performed, usually the last half of that measure. See extreme code for examples. Noteably for beats 1 and 2, a different beat sequence is given for a successful twist it command.
+beat1
+beat1snare2 (Half), beat1hat2 (Quarter), beat1perc2 (quarter)
+beat2
+Half notes
+beat2snare3, beat2kick2
+beat3
+quarter notes
+beat3percbell3, beat3hatc, beat3kick, beat3kick
+beat4
+beat4snare3 (Half), beat4hat (Quarter), beat4hat (quarter)
+
+Beats 1 and 2 after twist it beats
+beat 1
+This beat starts on the last quarter note of the second beat of the measure.
+beat1hat (Quarter), beat1snare2 (Half), beat1hat2 (Quarter), beat1perc2 (quarter)
+Beat2
+This beat starts on the last quarter note of the second beat of the measure.
+beat2kick (quarter), beat2snare2 (half), beat2kick2 (half)
+
+Beats after command beats
+These beats will play after a command is given. See extreme code for examples.
+beat1 (quarter notes)
+beat1snare2, beat1kick6, beat1kick5, beat1perc2
+beat2 (half notes)
+beat2snare3, beat2kick3
+beat3 (quarter notes)
+beat3percbell3, beat3hatc, beat3kick, beat3hatc
+beat4
+beat4snare4 (half), beat4kickhat (quarter), beat4hat (quarter)
+
+Lose beats
+These beat sequences play in solo mode after a game is lost. All of these beats are followed by the bop it sound (1_2).
+
+Beat 1
+beat1kick6 (quarter), beat1snare2 (quarter), beat1kick4 (quarter), beat1kick3 (quarter), beat1snare (half), beat1hat (half), beat1kick6 (quarter), beat1snare2 (quarter), beat1kick4 (quarter), beat1kick3 (quarter), beat1snare (half)
+The rest will be implemented later, but just use this as a starter implementation.

@@ -1,0 +1,45 @@
+menu@ setupmenu()
+{
+menu m();
+m.focus_first_item=true;
+m.allow_escape=true;
+@m.background_callback=@mtouch_callback;
+return m;
+}
+void mainmenu()
+{
+menu@ m=setupmenu();
+m.intro_text="Bop it! Menu";
+m.add_item("Toggle mode","mode");
+m.add_item("Toggle mechanic sounds","mechanics");
+m.add_item("Toggle turbo mode","turbo");
+m.add_item("Toggle quick scores","quickscore");
+m.add_item("Toggle autopilot","autopilot");
+m.add_item("Toggle autopilot speed","autolevel");
+m.add_item("Your battery level is "+battery+"%","battery");
+m.add_item("Go back","back");
+while (true)
+{
+wait(5);
+string name=m.selected_item_id;
+bool mresult=m.monitor();
+if (name=="mode")
+{
+if (soundpath=="original")
+orig_change_mode();
+else
+extreme_change_mode();
+}
+if (name=="turbo")
+toggle_turbo();
+if (name=="autopilot")
+toggle_autopilot();
+if (name=="autolevel")
+toggle_autolevel();
+if (name=="quickscore")
+toggle_quickscore();
+if (name=="mechanics")
+toggle_mechanics();
+if (mresult and name=="back") break;
+}
+}
