@@ -85,7 +85,7 @@ if (cap>=100000)
 cap=100000;
 set.write_number("capacity",cap);
 }
-batterytime=15000*(cap/100);
+batterytime=15000*(cap/100.0);
 pf.open("*hasbro");
 @sound_default_pack=@pf;
 sound_master_volume=-10;
