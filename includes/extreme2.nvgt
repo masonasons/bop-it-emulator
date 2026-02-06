@@ -80,7 +80,7 @@ void extreme2_preload_sounds()
 	for (uint i = 0; i < sound_names.length(); i++)
 	{
 		sound@ s = sound();
-		s.load("extreme2/" + sound_names[i] + ".ogg");
+		s.load("extreme2/" + sound_names[i] + ".flac");
 		extreme2_sounds.set(sound_names[i], @s);
 	}
 }
@@ -108,7 +108,7 @@ add_command(KEY_UP);     // 5 = flick it
 soundpath="extreme2";
 // Configure number speaker for score announcements
 extreme2_ns.prepend = "extreme2/";
-extreme2_ns.append = ".ogg";
+extreme2_ns.append = ".flac";
 @extreme2_ns.pack = @pf;
 test_mode_item("1",700);
 test_mode_item("2",700);
