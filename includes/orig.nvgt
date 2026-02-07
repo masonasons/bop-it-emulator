@@ -257,7 +257,7 @@ if (measure-passmeasure==0)
 original_play("tone2");
 }
 else
-original_play("drumkick");
+original_play("drumkick2");
 if ((score>=100 and turbo==false or score>=200 and turbo==true) and mode2000==0 or (score>=200 and turbo==false or score>=400 and turbo==true) and mode2000==1 or (score>=15 and turbo==false or score>=30 and turbo==true) and mode2000==2)
 {
 if (mode2000==1 or mode2000==2)
