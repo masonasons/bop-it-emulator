@@ -216,7 +216,7 @@ keydown++;
 if (command==(i+1))
 {
 play((i+1)+"_"+random(1,2)+".ogg",false,true);
-play(soundpath+"/"+(i+1)+"b.ogg",false);
+play(soundpath+"/"+(i+1)+"b.flac",false);
 succeeded=true;
 beattimer.restart();
 measure=commandmeasure+1;

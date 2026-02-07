@@ -7,7 +7,7 @@ void original_preload_sounds()
 		// Command sounds
 		"1", "1b", "1c", "2", "2b", "2c", "3", "3b", "3c",
 		// Beat sounds
-		"drumkick", "drumsnare",
+		"drumkick", "drumkick2", "drumsnare",
 		// Glitch sounds
 		"glitch1", "glitch2",
 		// Game sounds
@@ -21,7 +21,7 @@ void original_preload_sounds()
 	for (uint i = 0; i < sound_names.length(); i++)
 	{
 		sound@ s = sound();
-		s.load("original/" + sound_names[i] + ".ogg");
+		s.load("original/" + sound_names[i] + ".flac");
 		original_sounds.set(sound_names[i], @s);
 	}
 }
@@ -213,7 +213,7 @@ original_play("drumsnare");
 }
 else if (beats==4 and measure==1)
 {
-original_play("drumkick");
+original_play("drumkick2");
 }
 else if (beats==1 and passmode==true and measure-passmeasure>=1)
 {
